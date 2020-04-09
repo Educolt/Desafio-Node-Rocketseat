@@ -10,18 +10,18 @@ app.use(cors());
 
 const repositories = [];
 
-// validate ID
+// validate ID function
 function validateId(id, res) {
   if (!isUuid(id)) {
     return res.status(400).json({error: "Invalid Id"});
   }
-  return id;
 }
-
 // verify if repositorie exist and return the existing repositorie index
-function checkIfExist(id, response) {
+function checkIfExist(req, response, next) {
 
-  id = validateId(id, response);
+  const {id} = req.params;
+
+  validateId(id, response);
 
   const repIndex = repositories.findIndex(rep => rep.id === id);
   if(repIndex < 0){
@@ -30,8 +30,13 @@ function checkIfExist(id, response) {
     });
   };
 
-  return repIndex;
+  req.repIndex = repIndex;
+
+  return next();
 }
+
+// apply middlewares
+app.use("/repositories/:id", checkIfExist);
 
 app.get("/repositories", (request, response) => {
   
@@ -68,8 +73,8 @@ app.put("/repositories/:id", (request, response) => {
   // get body data
   const {title, url, techs} = request.body;
 
-  // verify if exist and get Index
-  const repIndex = checkIfExist(id, response);
+  // get Index
+  const {repIndex} = request;
 
   // get oldState repositorie
   const oldRep = repositories[repIndex];
@@ -91,11 +96,8 @@ app.put("/repositories/:id", (request, response) => {
 });
 
 app.delete("/repositories/:id", (req, res) => {
-  // get id param
-  const {id} = req.params;
-
-  // verify if exist and get Index
-  const repIndex = checkIfExist(id, res);
+  //get Index
+  const {repIndex} = req;
 
   // delete repositorie by index
   repositories.splice(repIndex, 1);
@@ -104,12 +106,9 @@ app.delete("/repositories/:id", (req, res) => {
   return res.status(204).json();
 });
 
-app.post("/repositories/:id/like", (request, response) => {
-  // get id param
-  const {id} = request.params;
-
-  // verify if exist and get Index
- const repIndex = checkIfExist(id, response);
+app.post("/repositories/:id/like", checkIfExist, (request, response) => {
+  // get Index
+  const {repIndex} = request;
 
   // set likes value
   repositories[repIndex].likes++;
